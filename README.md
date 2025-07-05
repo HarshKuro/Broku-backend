@@ -4,7 +4,7 @@ A beautiful, full-stack expense tracking application with modern UI/UX, built wi
 
 ![Broku App](https://img.shields.io/badge/Status-Production%20Ready-brightgreen)
 ![Platform](https://img.shields.io/badge/Platform-Android%20%7C%20iOS-blue)
-![Backend](https://img.shields.io/badge/Backend-AWS%20%7C%20Render%20%7C%20Railway-orange)
+![Backend](https://img.shields.io/badge/Backend-Render-orange)
 
 ## ✨ Features
 
