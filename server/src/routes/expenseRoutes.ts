@@ -5,7 +5,9 @@ import {
   createExpense,
   updateExpense,
   deleteExpense,
-  getMonthlySummary
+  getMonthlySummary,
+  getAnalytics,
+  getInsights
 } from '../controllers/expenseController';
 
 const router = express.Router();
@@ -19,6 +21,16 @@ router.get('/', getExpenses);
 // @desc    Get monthly summary
 // @access  Public
 router.get('/summary', getMonthlySummary);
+
+// @route   GET /api/expenses/analytics
+// @desc    Get analytics data with income/expense breakdown
+// @access  Public
+router.get('/analytics', getAnalytics);
+
+// @route   GET /api/expenses/insights
+// @desc    Get smart insights based on spending patterns
+// @access  Public
+router.get('/insights', getInsights);
 
 // @route   GET /api/expenses/:id
 // @desc    Get expense by ID

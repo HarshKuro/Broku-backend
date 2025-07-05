@@ -5,6 +5,7 @@ export interface IExpense extends Document {
   amount: number;
   date: Date;
   note: string;
+  type: 'income' | 'expense';
   createdAt: Date;
   updatedAt: Date;
 }
@@ -30,6 +31,12 @@ const ExpenseSchema: Schema = new Schema({
     trim: true,
     maxlength: [200, 'Note cannot exceed 200 characters'],
     default: ''
+  },
+  type: {
+    type: String,
+    enum: ['income', 'expense'],
+    required: [true, 'Type is required'],
+    default: 'expense'
   }
 }, {
   timestamps: true
@@ -38,5 +45,6 @@ const ExpenseSchema: Schema = new Schema({
 // Index for efficient querying by date
 ExpenseSchema.index({ date: -1 });
 ExpenseSchema.index({ category: 1, date: -1 });
+ExpenseSchema.index({ type: 1, date: -1 });
 
 export default mongoose.model<IExpense>('Expense', ExpenseSchema);

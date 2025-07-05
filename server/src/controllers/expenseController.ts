@@ -5,7 +5,7 @@ import mongoose from 'mongoose';
 // Get all expenses with optional filtering
 export const getExpenses = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { month, year, category } = req.query;
+    const { month, year, category, type } = req.query;
     
     // Build filter object
     const filter: any = {};
@@ -18,6 +18,10 @@ export const getExpenses = async (req: Request, res: Response): Promise<void> =>
     
     if (category) {
       filter.category = category;
+    }
+
+    if (type) {
+      filter.type = type;
     }
 
     const expenses = await Expense.find(filter).sort({ date: -1 });
@@ -75,7 +79,7 @@ export const getExpenseById = async (req: Request, res: Response): Promise<void>
 // Create new expense
 export const createExpense = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { category, amount, date, note } = req.body;
+    const { category, amount, date, note, type } = req.body;
 
     // Validation
     if (!category || !amount) {
@@ -98,7 +102,8 @@ export const createExpense = async (req: Request, res: Response): Promise<void> 
       category: category.trim(),
       amount: Number(amount),
       date: date ? new Date(date) : new Date(),
-      note: note ? note.trim() : ''
+      note: note ? note.trim() : '',
+      type: type || 'expense'
     });
 
     res.status(201).json({
@@ -118,7 +123,7 @@ export const createExpense = async (req: Request, res: Response): Promise<void> 
 export const updateExpense = async (req: Request, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
-    const { category, amount, date, note } = req.body;
+    const { category, amount, date, note, type } = req.body;
 
     if (!mongoose.Types.ObjectId.isValid(id)) {
       res.status(400).json({
@@ -142,6 +147,7 @@ export const updateExpense = async (req: Request, res: Response): Promise<void> 
     if (amount) updateData.amount = Number(amount);
     if (date) updateData.date = new Date(date);
     if (note !== undefined) updateData.note = note.trim();
+    if (type) updateData.type = type;
 
     const expense = await Expense.findByIdAndUpdate(
       id,
@@ -266,6 +272,202 @@ export const getMonthlySummary = async (req: Request, res: Response): Promise<vo
           startDate,
           endDate
         }
+      }
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Server Error',
+      error: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+};
+
+// Get analytics data with income/expense separation
+export const getAnalytics = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { period } = req.query; // 'week', 'month', 'lastMonth'
+    
+    const now = new Date();
+    let startDate = new Date();
+    let endDate = new Date();
+    
+    // Set date ranges based on period
+    if (period === 'week') {
+      const dayOfWeek = now.getDay();
+      startDate = new Date(now.getTime() - dayOfWeek * 24 * 60 * 60 * 1000);
+      endDate = now;
+    } else if (period === 'month') {
+      startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+      endDate = now;
+    } else { // lastMonth
+      startDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+      endDate = new Date(now.getFullYear(), now.getMonth(), 0);
+    }
+
+    // Get income and expense totals
+    const totals = await Expense.aggregate([
+      {
+        $match: {
+          date: { $gte: startDate, $lte: endDate }
+        }
+      },
+      {
+        $group: {
+          _id: '$type',
+          totalAmount: { $sum: '$amount' },
+          count: { $sum: 1 }
+        }
+      }
+    ]);
+
+    // Get category-wise breakdown for expenses
+    const expensesByCategory = await Expense.aggregate([
+      {
+        $match: {
+          date: { $gte: startDate, $lte: endDate },
+          type: 'expense'
+        }
+      },
+      {
+        $group: {
+          _id: '$category',
+          totalAmount: { $sum: '$amount' },
+          count: { $sum: 1 }
+        }
+      },
+      {
+        $sort: { totalAmount: -1 }
+      }
+    ]);
+
+    // Get daily/period breakdown
+    const timeBreakdown = await Expense.aggregate([
+      {
+        $match: {
+          date: { $gte: startDate, $lte: endDate }
+        }
+      },
+      {
+        $group: {
+          _id: {
+            date: { $dateToString: { format: "%Y-%m-%d", date: "$date" } },
+            type: '$type'
+          },
+          totalAmount: { $sum: '$amount' },
+          count: { $sum: 1 }
+        }
+      },
+      {
+        $sort: { '_id.date': 1 }
+      }
+    ]);
+
+    // Format response
+    const income = totals.find(t => t._id === 'income')?.totalAmount || 0;
+    const expense = totals.find(t => t._id === 'expense')?.totalAmount || 0;
+
+    res.status(200).json({
+      success: true,
+      data: {
+        summary: {
+          income,
+          expense,
+          balance: income - expense,
+          period: period || 'month'
+        },
+        expensesByCategory,
+        timeBreakdown,
+        period: {
+          startDate,
+          endDate,
+          type: period || 'month'
+        }
+      }
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Server Error',
+      error: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+};
+
+// Get insights based on spending patterns
+export const getInsights = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const now = new Date();
+    const currentMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0);
+
+    // Current month data
+    const currentMonthData = await Expense.aggregate([
+      {
+        $match: {
+          date: { $gte: currentMonth }
+        }
+      },
+      {
+        $group: {
+          _id: '$type',
+          totalAmount: { $sum: '$amount' },
+          count: { $sum: 1 }
+        }
+      }
+    ]);
+
+    // Last month data for comparison
+    const lastMonthData = await Expense.aggregate([
+      {
+        $match: {
+          date: { $gte: lastMonth, $lte: lastMonthEnd }
+        }
+      },
+      {
+        $group: {
+          _id: '$type',
+          totalAmount: { $sum: '$amount' },
+          count: { $sum: 1 }
+        }
+      }
+    ]);
+
+    // Top spending category this month
+    const topCategory = await Expense.aggregate([
+      {
+        $match: {
+          date: { $gte: currentMonth },
+          type: 'expense'
+        }
+      },
+      {
+        $group: {
+          _id: '$category',
+          totalAmount: { $sum: '$amount' },
+          count: { $sum: 1 }
+        }
+      },
+      {
+        $sort: { totalAmount: -1 }
+      },
+      { $limit: 1 }
+    ]);
+
+    // Recent high expense
+    const recentHighExpense = await Expense.findOne({
+      type: 'expense',
+      date: { $gte: new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000) }
+    }).sort({ amount: -1 });
+
+    res.status(200).json({
+      success: true,
+      data: {
+        currentMonth: currentMonthData,
+        lastMonth: lastMonthData,
+        topCategory: topCategory[0] || null,
+        recentHighExpense
       }
     });
   } catch (error) {
