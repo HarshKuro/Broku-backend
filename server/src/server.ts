@@ -49,9 +49,10 @@ app.use((err: any, req: express.Request, res: express.Response, next: express.Ne
   });
 });
 
-const PORT = process.env.PORT || 5000;
+const PORT = Number(process.env.PORT) || 5000;
 
-app.listen(PORT, () => {
+app.listen(PORT, '0.0.0.0', () => {
   console.log(`🚀 Server running on port ${PORT}`);
   console.log(`📊 Expense Tracker API is ready!`);
+  console.log(`🌐 Server accessible at http://localhost:${PORT} and http://192.168.1.32:${PORT}`);
 });
