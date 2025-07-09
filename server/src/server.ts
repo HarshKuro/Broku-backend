@@ -14,7 +14,12 @@ connectDB();
 const app = express();
 
 // Middleware
-app.use(cors());
+app.use(cors({
+  origin: '*', // Allow all origins for production
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  credentials: false
+}));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
@@ -54,5 +59,7 @@ const PORT = Number(process.env.PORT) || 5000;
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`🚀 Server running on port ${PORT}`);
   console.log(`📊 Expense Tracker API is ready!`);
-  console.log(`🌐 Server accessible at http://localhost:${PORT} and http://192.168.1.32:${PORT}`);
+  console.log(`🌐 Server accessible from all IP addresses on port ${PORT}`);
+  console.log(`🔗 Local: http://localhost:${PORT}`);
+  console.log(`🔗 Network: http://0.0.0.0:${PORT}`);
 });
