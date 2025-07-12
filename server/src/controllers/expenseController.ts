@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import Expense, { IExpense } from '../models/Expense';
+import CashWallet from '../models/CashWallet';
 import mongoose from 'mongoose';
 
 // Get all expenses with optional filtering
@@ -79,7 +80,7 @@ export const getExpenseById = async (req: Request, res: Response): Promise<void>
 // Create new expense
 export const createExpense = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { category, amount, date, note, type } = req.body;
+    const { category, amount, date, note, type, paymentMethod } = req.body;
 
     // Validation
     if (!category || !amount) {
@@ -98,13 +99,38 @@ export const createExpense = async (req: Request, res: Response): Promise<void> 
       return;
     }
 
+    // If payment method is cash and type is expense, check cash wallet balance
+    if (paymentMethod === 'cash' && (type === 'expense' || !type)) {
+      const wallet = await CashWallet.findOne();
+      if (!wallet || wallet.totalCash < amount) {
+        res.status(400).json({
+          success: false,
+          message: 'Insufficient cash balance in wallet'
+        });
+        return;
+      }
+    }
+
     const expense = await Expense.create({
       category: category.trim(),
       amount: Number(amount),
       date: date ? new Date(date) : new Date(),
       note: note ? note.trim() : '',
-      type: type || 'expense'
+      type: type || 'expense',
+      paymentMethod: paymentMethod || 'other'
     });
+
+    // If payment method is cash and type is expense, deduct from cash wallet
+    if (paymentMethod === 'cash' && (type === 'expense' || !type)) {
+      const wallet = await CashWallet.findOne();
+      if (wallet) {
+        await wallet.spendCash(
+          Number(amount),
+          `${category}: ${note || 'Expense'}`,
+          (expense as any)._id.toString()
+        );
+      }
+    }
 
     res.status(201).json({
       success: true,

@@ -10,9 +10,17 @@
     "postbuild": "cp -r src/public dist/ || echo 'No public directory'",
     "seed": "ts-node src/scripts/seedCategories.ts",
     "test": "echo \"Error: no test specified\" && exit 1",
-    "heroku-postbuild": "npm run build"
+    "heroku-postbuild": "npm run build",
+    "clean": "rm -rf dist",
+    "prebuild": "npm run clean",
+    "prod": "npm run build && npm start"
   },
-  "keywords": ["expense", "tracker", "api", "backend"],
+  "keywords": [
+    "expense",
+    "tracker",
+    "api",
+    "backend"
+  ],
   "author": "Your Name",
   "license": "MIT",
   "type": "commonjs",

@@ -4,9 +4,15 @@ import dotenv from 'dotenv';
 import connectDB from './config/db';
 import expenseRoutes from './routes/expenseRoutes';
 import categoryRoutes from './routes/categoryRoutes';
+import cashWalletRoutes from './routes/cashWalletRoutes';
+import aiRoutes from './routes/aiRoutes';
+import { AIService } from './services/aiService';
 
 // Load environment variables
 dotenv.config();
+
+// Initialize AI Service after env loading
+AIService.initialize();
 
 // Connect to database
 connectDB();
@@ -26,6 +32,8 @@ app.use(express.urlencoded({ extended: true }));
 // Routes
 app.use('/api/expenses', expenseRoutes);
 app.use('/api/categories', categoryRoutes);
+app.use('/api/cash-wallet', cashWalletRoutes);
+app.use('/api/ai', aiRoutes);
 
 // Health check route
 app.get('/api/health', (req, res) => {
