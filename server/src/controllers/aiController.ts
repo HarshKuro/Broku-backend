@@ -70,14 +70,6 @@ export class AIController {
   static async getFinancialInsights(req: AuthenticatedRequest, res: Response) {
     try {
       const { timeframe = 'month' } = req.query;
-      const userId = req.user?.id;
-
-      if (!userId) {
-        return res.status(401).json({
-          success: false,
-          message: 'User authentication required'
-        });
-      }
 
       // Get user's expenses for the timeframe
       const startDate = new Date();
@@ -87,10 +79,12 @@ export class AIController {
         startDate.setMonth(startDate.getMonth() - 1);
       }
 
+      // Since this app doesn't use user authentication, get all expenses
       const expenses = await Expense.find({
-        userId,
         date: { $gte: startDate }
       }).sort({ date: -1 });
+
+      console.log(`📊 Found ${expenses.length} expenses for AI analysis`);
 
       const insights = await AIService.generateFinancialInsights(expenses, timeframe as 'week' | 'month');
 
@@ -122,24 +116,17 @@ export class AIController {
    */
   static async getSpendingPatterns(req: AuthenticatedRequest, res: Response) {
     try {
-      const userId = req.user?.id;
-
-      if (!userId) {
-        return res.status(401).json({
-          success: false,
-          message: 'User authentication required'
-        });
-      }
-
-      // Get user's expenses from last 3 months for pattern analysis
+      // Get expenses from last 3 months for pattern analysis
       const threeMonthsAgo = new Date();
       threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
 
+      // Since this app doesn't use user authentication, get all expenses
       const expenses = await Expense.find({
-        userId,
         date: { $gte: threeMonthsAgo },
         type: 'expense'
       }).sort({ date: -1 });
+
+      console.log(`📊 Found ${expenses.length} expenses for pattern analysis`);
 
       const patterns = AIService.analyzeSpendingPatterns(expenses);
 
@@ -168,23 +155,18 @@ export class AIController {
   static async getBudgetRecommendations(req: AuthenticatedRequest, res: Response) {
     try {
       const { income } = req.query;
-      const userId = req.user?.id;
 
-      if (!userId) {
-        return res.status(401).json({
-          success: false,
-          message: 'User authentication required'
-        });
-      }
+      console.log('Getting budget recommendations');
 
       // Get user's expenses from last month
       const lastMonth = new Date();
       lastMonth.setMonth(lastMonth.getMonth() - 1);
 
       const expenses = await Expense.find({
-        userId,
         date: { $gte: lastMonth }
       }).sort({ date: -1 });
+
+      console.log('Found expenses for budget:', expenses.length);
 
       // Use provided income or calculate from income transactions
       let userIncome = income ? parseFloat(income as string) : 0;
@@ -228,14 +210,6 @@ export class AIController {
   static async chatQuery(req: AuthenticatedRequest, res: Response) {
     try {
       const { query } = req.body;
-      const userId = req.user?.id;
-
-      if (!userId) {
-        return res.status(401).json({
-          success: false,
-          message: 'User authentication required'
-        });
-      }
 
       if (!query || typeof query !== 'string') {
         return res.status(400).json({
@@ -244,10 +218,14 @@ export class AIController {
         });
       }
 
-      // Get user's recent expenses for context
-      const recentExpenses = await Expense.find({
-        userId
-      }).sort({ date: -1 }).limit(100);
+      console.log('Processing chat query:', query);
+
+      // Get recent expenses for context
+      const recentExpenses = await Expense.find({})
+        .sort({ date: -1 })
+        .limit(100);
+
+      console.log('Found expenses for chat context:', recentExpenses.length);
 
       const response = await AIService.chatWithAI(query, recentExpenses);
 

@@ -1,11 +1,13 @@
 import express from 'express';
 import cors from 'cors';
+import compression from 'compression';
 import dotenv from 'dotenv';
 import connectDB from './config/db';
 import expenseRoutes from './routes/expenseRoutes';
 import categoryRoutes from './routes/categoryRoutes';
 import cashWalletRoutes from './routes/cashWalletRoutes';
 import aiRoutes from './routes/aiRoutes';
+import importRoutes from './routes/importRoutes';
 import { AIService } from './services/aiService';
 
 // Load environment variables
@@ -20,20 +22,24 @@ connectDB();
 const app = express();
 
 // Middleware
+app.use(compression()); // Enable gzip compression
 app.use(cors({
   origin: '*', // Allow all origins for production
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
   credentials: false
 }));
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+
+// Increase payload size limits for file uploads
+app.use(express.json({ limit: '50mb' })); // Increase JSON payload limit
+app.use(express.urlencoded({ extended: true, limit: '50mb' })); // Increase URL-encoded payload limit
 
 // Routes
 app.use('/api/expenses', expenseRoutes);
 app.use('/api/categories', categoryRoutes);
 app.use('/api/cash-wallet', cashWalletRoutes);
 app.use('/api/ai', aiRoutes);
+app.use('/api/import', importRoutes);
 
 // Health check route
 app.get('/api/health', (req, res) => {
